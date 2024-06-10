@@ -4,6 +4,8 @@ from pathlib import Path
 import os
 from typing import Iterable, Optional
 import shutil
+import torch
+import timm
 
 NORMALIZATION_TEMPLATE_URL = "https://github.com/Avic3nna/STAMP/blob/main/resources/normalization_template.jpg?raw=true"
 CTRANSPATH_WEIGHTS_URL = "https://drive.google.com/u/0/uc?id=1DoDx_70_TLj98gTf6YTXnu4tFhsFocDX&export=download"
@@ -84,12 +86,37 @@ def run_cli(args: argparse.Namespace):
                 r = requests.get(NORMALIZATION_TEMPLATE_URL)
                 with normalization_template_path.open("wb") as f:
                     f.write(r.content)
+
             # Download feature extractor model
             feat_extractor = cfg.preprocessing.feat_extractor
             if feat_extractor == 'ctp':
                 model_path = Path(f"{os.environ['STAMP_RESOURCES_DIR']}/ctranspath.pth")
             elif feat_extractor == 'uni':
                 model_path = Path(f"{os.environ['STAMP_RESOURCES_DIR']}/uni/vit_large_patch16_224.dinov2.uni_mass100k/pytorch_model.bin")
+            elif feat_extractor == 'provgp':
+                model_path = Path(f"{os.environ['STAMP_RESOURCES_DIR']}/prov-gigapath/pytorch_model.bin")
+            elif feat_extractor == 'provgpslide':
+                model_path = Path(f"{os.environ['STAMP_RESOURCES_DIR']}/prov-gigapathslide/pytorch_model.bin")
+                '''
+            elif feat_extractor == 'retccl':
+                model_path = Path(f"{os.environ['STAMP_RESOURCES_DIR']}/retccl.pth")
+            elif feat_extractor == 'phikon':
+                model_path = Path(f"{os.environ['STAMP_RESOURCES_DIR']}/phikon.pth")
+            elif feat_extractor == 'hipt':
+                model_path = Path(f"{os.environ['STAMP_RESOURCES_DIR']}/hipt.pth")
+            elif feat_extractor == 'lunit':
+                model_path = Path(f"{os.environ['STAMP_RESOURCES_DIR']}/lunit_dino.pth")
+            elif feat_extractor == 'remedis':
+                model_path = Path(f"{os.environ['STAMP_RESOURCES_DIR']}/remedis.pth")
+            elif feat_extractor == 'pathoduet':
+                model_path = Path(f"{os.environ['STAMP_RESOURCES_DIR']}/pathoduet.pth")
+            elif feat_extractor == 'beph':
+                model_path = Path(f"{os.environ['STAMP_RESOURCES_DIR']}/beph.pth")
+            elif feat_extractor == 'conch':
+                model_path = Path(f"{os.environ['STAMP_RESOURCES_DIR']}/conch.pth")
+            elif feat_extractor == 'ciga':
+                model_path = Path(f"{os.environ['STAMP_RESOURCES_DIR']}/ciga.pth")
+                '''
             model_path.parent.mkdir(parents=True, exist_ok=True)
             if model_path.exists():
                 print(f"Skipping download, feature extractor model already exists at {model_path}")
@@ -102,6 +129,97 @@ def run_cli(args: argparse.Namespace):
                     print(f"Downloading UNI weights")
                     from uni.get_encoder import get_encoder
                     get_encoder(enc_name='uni', checkpoint='pytorch_model.bin', assets_dir=f"{os.environ['STAMP_RESOURCES_DIR']}/uni")
+                elif feat_extractor == 'provgp':
+                    # Load the pretrained GigaPath tile encoder model
+                    print("Downloading ProvGP weights")
+                    assets_dir = f"{os.environ['STAMP_RESOURCES_DIR']}"
+                    model = timm.create_model("hf_hub:prov-gigapath/prov-gigapath", pretrained=True)
+                                        
+                    model_name = 'prov-gigapath'
+                    checkpoint = 'pytorch_model.bin'
+
+                    ckpt_dir = os.path.join(assets_dir, model_name)
+                    ckpt_path = os.path.join(assets_dir, model_name, checkpoint)
+
+                    # Ensure the directory exists
+                    os.makedirs(ckpt_dir, exist_ok=True)
+
+                    # Save the model
+                    torch.save(model.state_dict(), ckpt_path)
+                    
+                    # if not os.path.isfile(ckpt_path):
+                    #     from huggingface_hub import login, hf_hub_download
+                    #     login()  # login with your User Access Token, found at https://huggingface.co/settings/tokens
+                    #     os.makedirs(ckpt_dir, exist_ok=True)
+                    #     hf_hub_download('prov-gigapath/prov-gigapath', filename=checkpoint, local_dir=ckpt_dir, force_download=True)
+
+                elif feat_extractor == 'provgpslide':
+                    print("Downloading ProvGP weights")
+                    assets_dir = f"{os.environ['STAMP_RESOURCES_DIR']}"
+                    # Initialize tile encoder
+                    model = timm.create_model("hf_hub:prov-gigapath/prov-gigapath", pretrained=True)
+                    # Initialize slide encoder
+                    # Add the helpers directory to the Python path
+                    import sys
+                    # Add the provgp directory to the Python path
+                    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'provgp')))
+
+                    # Import the slide_encoder module from the provgp directory
+                    from gigapath import slide_encoder
+                    slide_encoder = slide_encoder.create_model("hf_hub:prov-gigapath/prov-gigapath", "gigapath_slide_enc12l768d", 1536)
+                    
+                    model_name = 'prov-gigapathslide'
+                    checkpoint = 'pytorch_model.bin'
+                    slide_enc = 'slide_model.bin'
+
+                    ckpt_dir = os.path.join(assets_dir, model_name)
+                    ckpt_path = os.path.join(assets_dir, model_name, checkpoint)
+                    slide_enc_path = os.path.join(assets_dir, model_name, slide_enc)
+
+                    # Ensure the directory exists
+                    os.makedirs(ckpt_dir, exist_ok=True)
+
+                    # Save the model
+                    torch.save(model.state_dict(), ckpt_path)
+                    torch.save(slide_encoder.state_dict(), slide_enc_path)
+                '''
+                elif feat_extractor == 'retccl':
+                    print(f"Downloading RetCCL weights to {model_path}")
+                    import gdown
+                    gdown.download("https://drive.google.com/u/0/uc?id=1EOqdXSkIHg2Pcl3P8S4SGB5elDylw8O2&export=download", str(model_path))
+                elif feat_extractor == 'phikon':
+                    print(f"Downloading Phikon weights to {model_path}")
+                    import gdown
+                    gdown.download("https://drive.google.com/u/0/uc?id=1uxsoNVhQFoIDxb4RYIiOtk044s6TTQXY&export=download", str(model_path))
+                elif feat_extractor == 'hipt':
+                    print(f"Downloading HIPT weights to {model_path}")
+                    import gdown
+                    gdown.download("URL_FOR_HIPT_WEIGHTS", str(model_path))
+                elif feat_extractor == 'lunit':
+                    print(f"Downloading Lunit weights to {model_path}")
+                    import gdown
+                    gdown.download("https://github.com/lunit-io/benchmark-ssl-pathology/releases/download/pretrained-weights/dino_vit_small_patch16_ep200.torch", str(model_path))
+                elif feat_extractor == 'remedis':
+                    print(f"Downloading Remedis weights to {model_path}")
+                    import gdown
+                    gdown.download("URL_FOR_REMEDIS_WEIGHTS", str(model_path))
+                elif feat_extractor == 'pathoduet':
+                    print(f"Downloading PathoDuet weights to {model_path}")
+                    import gdown
+                    gdown.download("URL_FOR_PATHODUET_WEIGHTS", str(model_path))
+                elif feat_extractor == 'beph':
+                    print(f"Downloading BEPH weights to {model_path}")
+                    import gdown
+                    gdown.download("URL_FOR_BEPH_WEIGHTS", str(model_path))
+                elif feat_extractor == 'conch':
+                    print(f"Downloading CONCH weights to {model_path}")
+                    import gdown
+                    gdown.download("URL_FOR_CONCH_WEIGHTS", str(model_path))
+                elif feat_extractor == 'ciga':
+                    print(f"Downloading CIGA weights to {model_path}")
+                    import gdown
+                    gdown.download("URL_FOR_CIGA_WEIGHTS", str(model_path))
+                    '''
         case "config":
             print(OmegaConf.to_yaml(cfg, resolve=True))
         case "preprocess":
@@ -119,8 +237,34 @@ def run_cli(args: argparse.Namespace):
                 model_path = f"{os.environ['STAMP_RESOURCES_DIR']}/ctranspath.pth"
             elif c.feat_extractor == 'uni':
                 model_path = f"{os.environ['STAMP_RESOURCES_DIR']}/uni/vit_large_patch16_224.dinov2.uni_mass100k/pytorch_model.bin"
+            elif c.feat_extractor == 'provgp':
+                model_path = f"{os.environ['STAMP_RESOURCES_DIR']}/prov-gigapath/pytorch_model.bin"
+            elif c.feat_extractor == 'provgpslide':
+                model_path = f"{os.environ['STAMP_RESOURCES_DIR']}/prov-gigapathslide/pytorch_model.bin"
+                '''
+            elif c.feat_extractor == 'retccl':
+                model_path = f"{os.environ['STAMP_RESOURCES_DIR']}/retccl.pth"
+            elif c.feat_extractor == 'phikon':
+                model_path = f"{os.environ['STAMP_RESOURCES_DIR']}/phikon.pth"
+            elif c.feat_extractor == 'hipt':
+                model_path = f"{os.environ['STAMP_RESOURCES_DIR']}/hipt.pth"
+            elif c.feat_extractor == 'lunit':
+                model_path = f"{os.environ['STAMP_RESOURCES_DIR']}/lunit_dino.pth"
+            elif c.feat_extractor == 'remedis':
+                model_path = f"{os.environ['STAMP_RESOURCES_DIR']}/remedis.pth"
+            elif c.feat_extractor == 'pathoduet':
+                model_path = f"{os.environ['STAMP_RESOURCES_DIR']}/pathoduet.pth"
+            elif c.feat_extractor == 'beph':
+                model_path = f"{os.environ['STAMP_RESOURCES_DIR']}/beph.pth"
+            elif c.feat_extractor == 'conch':
+                model_path = f"{os.environ['STAMP_RESOURCES_DIR']}/conch.pth"
+            elif c.feat_extractor == 'ciga':
+                model_path = f"{os.environ['STAMP_RESOURCES_DIR']}/ciga.pth"
+                '''
+            # Add more feature extractors as needed
             if not Path(model_path).exists():
                 raise ConfigurationError(f"Feature extractor model {model_path} does not exist, please run `stamp setup` to download it.")
+
             from .preprocessing.wsi_norm import preprocess
             preprocess(
                 output_dir=Path(c.output_dir),
